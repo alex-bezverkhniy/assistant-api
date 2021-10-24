@@ -88,6 +88,7 @@ func main() {
 	log.Fatal(app.Listen(":3000"))
 }
 
+// Create new Store
 func NewStore(fn string) (*Store, error) {
 	// Read file
 	jsonBytes, err := os.ReadFile(fn)
@@ -110,6 +111,7 @@ func NewStore(fn string) (*Store, error) {
 	}, nil
 }
 
+// Create Error message
 func NewError(msg string) fiber.Map {
 	return fiber.Map{
 		"status":  "error",
@@ -117,10 +119,12 @@ func NewError(msg string) fiber.Map {
 	}
 }
 
+// Get all messages
 func (s *Store) GetAll() []Message {
 	return s.messages
 }
 
+// Get message by ID
 func (s *Store) GitByID(id int) (*Message, error) {
 	for _, msg := range s.messages {
 		if msg.ID == id {
