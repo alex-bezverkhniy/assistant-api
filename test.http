@@ -1,0 +1,25 @@
+### assistant DB GET all messages
+
+GET http://localhost:3000/api/v1/assistant/db
+
+
+
+### assistant DB GET first message
+
+GET http://localhost:3000/api/v1/assistant/db/2
+
+
+### assistant DB GET message 404
+
+GET http://localhost:3000/api/v1/assistant/db/20
+
+
+### assist PUT default message
+
+PUT http://localhost:3000/api/v1/assist/
+
+
+### assist PUT message by Id
+
+PUT http://localhost:3000/api/v1/assist/2
+
