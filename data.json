@@ -1,0 +1,71 @@
+[
+    {
+        "id": 0,
+        "body": "Hello, I am a virtual asistant. How can I help you?",
+        "options": [
+            {
+                "id": 0,
+                "body": "I need help with my passowrd",
+                "nextMessageId": 1
+            },
+            {
+                "id": 1,
+                "body": "I need help with my account",
+                "nextMessageId": 2
+            }
+        ]
+    },
+    {
+        "id": 1,
+        "body": "Let me clarify what exactly you need?",
+        "options": [
+            {
+                "id": 0,
+                "body": "restore passowrd",
+                "nextMessageId": 3
+            },
+            {
+                "id": 1,
+                "body": "change password",
+                "nextMessageId": 4
+            }
+        ]
+    },
+    {
+        "id": 2,
+        "body": "Let me clarify what exactly you need?",
+        "options": [
+            {
+                "id": 0,
+                "body": "unclock my accaunt",
+                "nextMessageId": 5
+            },
+            {
+                "id": 1,
+                "body": "block my account",
+                "nextMessageId": 6
+            }
+        ]
+    },
+    {
+        "id": 3,
+        "body": "If you neet restore your password please fallow next [link](http://help.com/pwd)",
+        "options": [
+            {
+                "id": 0,
+                "body": "I have other questions",
+                "nextMessageId": 8
+            },
+            {
+                "id": 1,
+                "body": "Thank you I got what I need",
+                "nextMessageId": 7
+            }
+        ]
+    },
+    {
+        "id": 7,
+        "body": "Thank you for using our service! Have good day!",
+        "options": []
+    }
+]
