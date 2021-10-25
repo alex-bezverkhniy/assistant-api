@@ -1,11 +1,11 @@
 [
     {
         "id": 0,
-        "body": "Hello, I am a virtual asistant. How can I help you?",
+        "body": "Hello, I am a virtual assistant. How can I help you?",
         "options": [
             {
                 "id": 0,
-                "body": "I need help with my passowrd",
+                "body": "I need help with my password",
                 "nextMessageId": 1
             },
             {
@@ -21,7 +21,7 @@
         "options": [
             {
                 "id": 0,
-                "body": "restore passowrd",
+                "body": "restore password",
                 "nextMessageId": 3
             },
             {
@@ -37,7 +37,7 @@
         "options": [
             {
                 "id": 0,
-                "body": "unclock my accaunt",
+                "body": "unclock my account",
                 "nextMessageId": 5
             },
             {
