@@ -13,20 +13,24 @@ import (
 
 // Data Structures
 
+// Option for user selection
 type Option struct {
 	ID            int    `json:"id"`
 	Body          string `json:"body"`
 	NextMessageID int    `json:"nextMessageId"`
 }
 
+// List of Options
 type Options []Option
 
+// Message/Question
 type Message struct {
 	ID      int     `json:"id"`
 	Body    string  `json:"body"`
 	Options Options `json:"options"`
 }
 
+// Store
 type Store struct {
 	messages []Message
 	fileName string
