@@ -37,6 +37,12 @@ type Store struct {
 }
 
 func main() {
+	app := Setup()
+
+	log.Fatal(app.Listen(":3000"))
+}
+
+func Setup() *fiber.App {
 	app := fiber.New()
 
 	store, err := NewStore("data.json")
@@ -89,7 +95,7 @@ func main() {
 		return c.Status(fiber.StatusOK).JSON(m)
 	})
 
-	log.Fatal(app.Listen(":3000"))
+	return app
 }
 
 // Create new Store
