@@ -109,7 +109,3 @@ func TestEndpoints(t *testing.T) {
 		assert.Equalf(t, tt.expectedBody, string(body), tt.description)
 	}
 }
-
-func AssistantBDTest(t *testing.T) {
-
-}
