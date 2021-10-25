@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAssist(t *testing.T) {
+func TestEndpoints(t *testing.T) {
 	tests := []struct {
 		description string
 		route       string
@@ -30,7 +30,52 @@ func TestAssist(t *testing.T) {
 			body:          nil,
 			expectedError: false,
 			expectedCode:  200,
-			expectedBody:  `{"id":0,"body":"Hello, I am a virtual asistant. How can I help you?","options":[{"id":0,"body":"I need help with my passowrd","nextMessageId":1},{"id":1,"body":"I need help with my account","nextMessageId":2}]}`,
+			expectedBody:  `{"id":0,"body":"Hello, I am a virtual assistant. How can I help you?","options":[{"id":0,"body":"I need help with my password","nextMessageId":1},{"id":1,"body":"I need help with my account","nextMessageId":2}]}`,
+		},
+		{
+			description:   "get message with id = 1",
+			route:         "/api/v1/assist/1",
+			method:        "PUT",
+			body:          nil,
+			expectedError: false,
+			expectedCode:  200,
+			expectedBody:  `{"id":1,"body":"Let me clarify what exactly you need?","options":[{"id":0,"body":"restore password","nextMessageId":3},{"id":1,"body":"change password","nextMessageId":4}]}`,
+		},
+		{
+			description:   "get 404",
+			route:         "/api/v1/assist/100",
+			method:        "PUT",
+			body:          nil,
+			expectedError: false,
+			expectedCode:  404,
+			expectedBody:  `{"message":"no messages found","status":"error"}`,
+		},
+		{
+			description:   "Get all records from assistant db",
+			route:         "/api/v1/assistant/db",
+			method:        "GET",
+			body:          nil,
+			expectedError: false,
+			expectedCode:  200,
+			expectedBody:  `[{"id":0,"body":"Hello, I am a virtual assistant. How can I help you?","options":[{"id":0,"body":"I need help with my password","nextMessageId":1},{"id":1,"body":"I need help with my account","nextMessageId":2}]},{"id":1,"body":"Let me clarify what exactly you need?","options":[{"id":0,"body":"restore password","nextMessageId":3},{"id":1,"body":"change password","nextMessageId":4}]},{"id":2,"body":"Let me clarify what exactly you need?","options":[{"id":0,"body":"unclock my account","nextMessageId":5},{"id":1,"body":"block my account","nextMessageId":6}]},{"id":3,"body":"If you need restore your password please fallow next [link](http://help.com/pwd)","options":[{"id":0,"body":"I have other questions","nextMessageId":8},{"id":1,"body":"Thank you I got what I need","nextMessageId":7}]},{"id":7,"body":"Thank you for using our service! Have good day!","options":[]}]`,
+		},
+		{
+			description:   "Get record by ID",
+			route:         "/api/v1/assistant/db/1",
+			method:        "GET",
+			body:          nil,
+			expectedError: false,
+			expectedCode:  200,
+			expectedBody:  `{"id":1,"body":"Let me clarify what exactly you need?","options":[{"id":0,"body":"restore password","nextMessageId":3},{"id":1,"body":"change password","nextMessageId":4}]}`,
+		},
+		{
+			description:   "Get record - 404",
+			route:         "/api/v1/assistant/db/100",
+			method:        "GET",
+			body:          nil,
+			expectedError: false,
+			expectedCode:  404,
+			expectedBody:  `{"message":"no messages found","status":"error"}`,
 		},
 	}
 
