@@ -2,22 +2,25 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/driver/sqlite"
+
+	"gorm.io/gorm"
 )
 
 // Data Structures
 
 // Option for user selection
 type Option struct {
-	ID            int    `json:"id"`
-	Body          string `json:"body"`
-	NextMessageID int    `json:"nextMessageId"`
+	gorm.Model
+	ID        uint   `json:"id"`
+	Body      string `json:"body"`
+	MessageID int    `json:"nextMessageId"`
 }
 
 // List of Options
@@ -25,30 +28,67 @@ type Options []Option
 
 // Message/Question
 type Message struct {
-	ID      int     `json:"id"`
+	gorm.Model
+	// ID      uint    `json:"id"`
 	Body    string  `json:"body"`
 	Options Options `json:"options"`
+	FlowID  uint
 }
 
-// Store
-type Store struct {
-	messages []Message
-	fileName string
+// Flow - dialog flow
+type Flow struct {
+	gorm.Model
+	Messages []Message
+	Title    string
+}
+
+type FlowStorage struct {
+	db *gorm.DB
+}
+
+func NewFlowStorage(db *gorm.DB) *FlowStorage {
+	return &FlowStorage{
+		db: db,
+	}
 }
 
 func main() {
-	app := Setup()
+	db, err := SetupDB("assistant.db")
+	if err != nil {
+		panic(err.Error())
+	}
+	store := NewFlowStorage(db)
+	app := Setup(store)
 
 	log.Fatal(app.Listen(":3000"))
 }
 
-func Setup() *fiber.App {
-	app := fiber.New()
+// Setup DB connection and does all migration and default data
+func SetupDB(dbFile string) (*gorm.DB, error) {
 
-	store, err := NewStore("data.json")
+	db, err := gorm.Open(sqlite.Open(dbFile), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Cannot read DB file")
+		log.Fatalln("failed to connect database")
+		return nil, err
 	}
+
+	db.AutoMigrate(&Option{})
+	db.AutoMigrate(&Message{})
+	db.AutoMigrate(&Flow{})
+
+	flow, err := LoadFlowFromJson("data.json")
+	if err != nil {
+		log.Fatalln("cannot load default data")
+		return nil, err
+	}
+
+	db.Create(flow)
+
+	return db, nil
+}
+
+func Setup(store *FlowStorage) *fiber.App {
+	app := fiber.New()
 
 	v1 := app.Group("/api/v1")
 
@@ -57,17 +97,18 @@ func Setup() *fiber.App {
 	assist.Put("/:id?", func(c *fiber.Ctx) error {
 		idStr := c.Params("id")
 		if idStr == "" {
-			idStr = "0"
+			idStr = "1"
 		}
 
-		id, err := strconv.Atoi(idStr)
+		id64, err := strconv.ParseUint(idStr, 10, 32)
+		id := uint(id64)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(NewError(err.Error()))
 		}
 
-		m, err := store.GitByID(id)
-		if err != nil {
-			return c.Status(fiber.StatusNotFound).JSON(NewError(err.Error()))
+		m := store.GetByID(id)
+		if m == nil || m.ID == 0 {
+			return c.Status(fiber.StatusNotFound).JSON(NewError("no messages found"))
 		}
 		return c.Status(fiber.StatusOK).JSON(m)
 	})
@@ -83,14 +124,15 @@ func Setup() *fiber.App {
 			idStr = "0"
 		}
 
-		id, err := strconv.Atoi(idStr)
+		id64, err := strconv.ParseUint(idStr, 10, 32)
+		id := uint(id64)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(NewError(err.Error()))
 		}
 
-		m, err := store.GitByID(id)
-		if err != nil {
-			return c.Status(fiber.StatusNotFound).JSON(NewError(err.Error()))
+		m := store.GetByID(id)
+		if m == nil || m.ID == 0 {
+			return c.Status(fiber.StatusNotFound).JSON(NewError("message not found"))
 		}
 		return c.Status(fiber.StatusOK).JSON(m)
 	})
@@ -98,8 +140,8 @@ func Setup() *fiber.App {
 	return app
 }
 
-// Create new Store
-func NewStore(fn string) (*Store, error) {
+// Create new dialog Flow
+func LoadFlowFromJson(fn string) (*Flow, error) {
 	// Read file
 	jsonBytes, err := os.ReadFile(fn)
 	if err != nil || len(jsonBytes) == 0 {
@@ -115,9 +157,9 @@ func NewStore(fn string) (*Store, error) {
 		fmt.Println("Error:", err)
 		return nil, err
 	}
-	return &Store{
-		messages: msgs,
-		fileName: fn,
+	return &Flow{
+		Messages: msgs,
+		Title:    "default",
 	}, nil
 }
 
@@ -130,16 +172,15 @@ func NewError(msg string) fiber.Map {
 }
 
 // Get all messages
-func (s *Store) GetAll() []Message {
-	return s.messages
+func (s *FlowStorage) GetAll() []Message {
+	var messages []Message
+	s.db.Find(&messages)
+	return messages
 }
 
 // Get message by ID
-func (s *Store) GitByID(id int) (*Message, error) {
-	for _, msg := range s.messages {
-		if msg.ID == id {
-			return &msg, nil
-		}
-	}
-	return nil, errors.New("no messages found")
+func (s *FlowStorage) GetByID(id uint) *Message {
+	var msg *Message
+	s.db.First(&msg, id)
+	return msg
 }

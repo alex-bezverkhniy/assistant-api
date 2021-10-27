@@ -4,6 +4,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,7 +32,7 @@ func TestEndpoints(t *testing.T) {
 			body:          nil,
 			expectedError: false,
 			expectedCode:  200,
-			expectedBody:  `{"id":0,"body":"Hello, I am a virtual assistant. How can I help you?","options":[{"id":0,"body":"I need help with my password","nextMessageId":1},{"id":1,"body":"I need help with my account","nextMessageId":2}]}`,
+			expectedBody:  `{"ID":1,"CreatedAt":"000","UpdatedAt":"000","DeletedAt":"000","body":"Hello, I am a virtual assistant. How can I help you?","options":null,"FlowID":1}`,
 		},
 		{
 			description:   "get message with id = 1",
@@ -39,7 +41,7 @@ func TestEndpoints(t *testing.T) {
 			body:          nil,
 			expectedError: false,
 			expectedCode:  200,
-			expectedBody:  `{"id":1,"body":"Let me clarify what exactly you need?","options":[{"id":0,"body":"restore password","nextMessageId":3},{"id":1,"body":"change password","nextMessageId":4}]}`,
+			expectedBody:  `{"ID":1,"CreatedAt":"000","UpdatedAt":"000","DeletedAt":"000","body":"Hello, I am a virtual assistant. How can I help you?","options":null,"FlowID":1}`,
 		},
 		{
 			description:   "get 404",
@@ -57,7 +59,7 @@ func TestEndpoints(t *testing.T) {
 			body:          nil,
 			expectedError: false,
 			expectedCode:  200,
-			expectedBody:  `[{"id":0,"body":"Hello, I am a virtual assistant. How can I help you?","options":[{"id":0,"body":"I need help with my password","nextMessageId":1},{"id":1,"body":"I need help with my account","nextMessageId":2}]},{"id":1,"body":"Let me clarify what exactly you need?","options":[{"id":0,"body":"restore password","nextMessageId":3},{"id":1,"body":"change password","nextMessageId":4}]},{"id":2,"body":"Let me clarify what exactly you need?","options":[{"id":0,"body":"unclock my account","nextMessageId":5},{"id":1,"body":"block my account","nextMessageId":6}]},{"id":3,"body":"If you need restore your password please fallow next [link](http://help.com/pwd)","options":[{"id":0,"body":"I have other questions","nextMessageId":8},{"id":1,"body":"Thank you I got what I need","nextMessageId":7}]},{"id":7,"body":"Thank you for using our service! Have good day!","options":[]}]`,
+			expectedBody:  `[{"ID":1,"CreatedAt":"000","UpdatedAt":"000","DeletedAt":"000","body":"Hello, I am a virtual assistant. How can I help you?","options":null,"FlowID":1},{"ID":2,"CreatedAt":"000","UpdatedAt":"000","DeletedAt":"000","body":"Let me clarify what exactly you need?","options":null,"FlowID":1},{"ID":3,"CreatedAt":"000","UpdatedAt":"000","DeletedAt":"000","body":"If you need restore your password please fallow next [link](http://help.com/pwd)","options":null,"FlowID":1},{"ID":7,"CreatedAt":"000","UpdatedAt":"000","DeletedAt":"000","body":"Thank you for using our service! Have good day!","options":null,"FlowID":1}]`,
 		},
 		{
 			description:   "Get record by ID",
@@ -66,7 +68,7 @@ func TestEndpoints(t *testing.T) {
 			body:          nil,
 			expectedError: false,
 			expectedCode:  200,
-			expectedBody:  `{"id":1,"body":"Let me clarify what exactly you need?","options":[{"id":0,"body":"restore password","nextMessageId":3},{"id":1,"body":"change password","nextMessageId":4}]}`,
+			expectedBody:  `{"ID":1,"CreatedAt":"000","UpdatedAt":"000","DeletedAt":"000","body":"Hello, I am a virtual assistant. How can I help you?","options":null,"FlowID":1}`,
 		},
 		{
 			description:   "Get record - 404",
@@ -75,12 +77,18 @@ func TestEndpoints(t *testing.T) {
 			body:          nil,
 			expectedError: false,
 			expectedCode:  404,
-			expectedBody:  `{"message":"no messages found","status":"error"}`,
+			expectedBody:  `{"message":"message not found","status":"error"}`,
 		},
 	}
 
 	// Setup the app as it is done in the main function
-	app := Setup()
+	testDb, err := SetupDB("test.db")
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	store := NewFlowStorage(testDb)
+	app := Setup(store)
 
 	for _, tt := range tests {
 		// Create request
@@ -105,7 +113,23 @@ func TestEndpoints(t *testing.T) {
 		body, err := ioutil.ReadAll(res.Body)
 		assert.Nilf(t, err, tt.description)
 
+		gotBody := string(body)
+		gotBody, err = cleanupDates(gotBody)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		// Verify, that the reponse body equals the expected body
-		assert.Equalf(t, tt.expectedBody, string(body), tt.description)
+		assert.Equalf(t, tt.expectedBody, string(gotBody), tt.description)
 	}
+	os.Remove("test.db")
+}
+
+// (.*["CreatedAt"||"UpdatedAt"||"DeletedAt"]:)(["\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{9}-\d{2}:\d{2}"])
+func cleanupDates(str string) (string, error) {
+	regexp, err := regexp.Compile(`("CreatedAt"|"UpdatedAt"|"DeletedAt"):("\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d*-\d{2}:\d{2}"|null)`)
+	if err != nil {
+		return "", err
+	}
+	return regexp.ReplaceAllString(str, `$1:"000"`), nil
 }
