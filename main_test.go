@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -79,6 +80,33 @@ func TestEndpoints(t *testing.T) {
 			expectedCode:  404,
 			expectedBody:  `{"message":"message not found","status":"error"}`,
 		},
+		{
+			description:   "Create new message",
+			route:         "/api/v1/assistant/db/messages",
+			method:        "POST",
+			body:          strings.NewReader(`{"body": "Let me clarify what exactly you need?","options": [],"FlowID": 3}`),
+			expectedError: false,
+			expectedCode:  201,
+			expectedBody:  `{"ID":8,"CreatedAt":"000","UpdatedAt":"000","DeletedAt":"000","body":"Let me clarify what exactly you need?","options":[],"FlowID":3}`,
+		},
+		{
+			description:   "Update message",
+			route:         "/api/v1/assistant/db/messages/8",
+			method:        "PUT",
+			body:          strings.NewReader(`{"body": "Let me clarify what exactly you need? UPDATED","options": [],"FlowID": 3}`),
+			expectedError: false,
+			expectedCode:  200,
+			expectedBody:  `{"ID":8,"CreatedAt":"000","UpdatedAt":"000","DeletedAt":"000","body":"Let me clarify what exactly you need? UPDATED","options":[],"FlowID":3}`,
+		},
+		{
+			description:   "Delete message",
+			route:         "/api/v1/assistant/db/messages/8",
+			method:        "DELETE",
+			body:          nil,
+			expectedError: false,
+			expectedCode:  200,
+			expectedBody:  `{"message":"message was removed","status":"success"}`,
+		},
 	}
 
 	// Setup the app as it is done in the main function
@@ -127,9 +155,9 @@ func TestEndpoints(t *testing.T) {
 
 // (.*["CreatedAt"||"UpdatedAt"||"DeletedAt"]:)(["\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{9}-\d{2}:\d{2}"])
 func cleanupDates(str string) (string, error) {
-	regexp, err := regexp.Compile(`("CreatedAt"|"UpdatedAt"|"DeletedAt"):("\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d*-\d{2}:\d{2}"|null)`)
+	regexp, err := regexp.Compile(`("CreatedAt":|"UpdatedAt":|"DeletedAt":)("\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d*-\d{2}:\d{2}"|null)|("\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z")`)
 	if err != nil {
 		return "", err
 	}
-	return regexp.ReplaceAllString(str, `$1:"000"`), nil
+	return regexp.ReplaceAllString(str, `$1"000"`), nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -119,12 +120,7 @@ func Setup(store *FlowStorage) *fiber.App {
 	})
 
 	assistantDB.Get("/:id", func(c *fiber.Ctx) error {
-		idStr := c.Params("id")
-		if idStr == "" {
-			idStr = "0"
-		}
-
-		id64, err := strconv.ParseUint(idStr, 10, 32)
+		id64, err := strconv.ParseUint(c.Params("id", "0"), 10, 32)
 		id := uint(id64)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(NewError(err.Error()))
@@ -135,6 +131,49 @@ func Setup(store *FlowStorage) *fiber.App {
 			return c.Status(fiber.StatusNotFound).JSON(NewError("message not found"))
 		}
 		return c.Status(fiber.StatusOK).JSON(m)
+	})
+
+	assistantDB.Post("/messages", func(c *fiber.Ctx) error {
+		var m Message
+		if err := c.BodyParser(&m); err != nil {
+			c.Status(fiber.StatusBadRequest).JSON(NewError("cannot parse request body"))
+		}
+		if err := store.CreateMessage(&m); err != nil {
+			c.Status(fiber.StatusInternalServerError).JSON(NewError("cannot save new message, try again later"))
+		}
+		return c.Status(fiber.StatusCreated).JSON(m)
+	})
+	assistantDB.Put("/messages/:id", func(c *fiber.Ctx) error {
+		id64, err := strconv.ParseUint(c.Params("id", "0"), 10, 32)
+		id := uint(id64)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(NewError(err.Error()))
+		}
+
+		var m Message
+		if err := c.BodyParser(&m); err != nil {
+			c.Status(fiber.StatusBadRequest).JSON(NewError("cannot parse request body"))
+		}
+		if m.ID == 0 {
+			m.ID = id
+		}
+		if err := store.UpdateMessage(&m); err != nil {
+			c.Status(fiber.StatusInternalServerError).JSON(NewError("cannot update message, try again later"))
+		}
+		return c.Status(fiber.StatusOK).JSON(m)
+	})
+
+	assistantDB.Delete("/messages/:id", func(c *fiber.Ctx) error {
+		id64, err := strconv.ParseUint(c.Params("id", "0"), 10, 32)
+		id := uint(id64)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(NewError(err.Error()))
+		}
+
+		if err := store.DeleteMessage(id); err != nil {
+			c.Status(fiber.StatusNotFound).JSON(NewError(err.Error()))
+		}
+		return c.Status(fiber.StatusOK).JSON(NewSuccess("message was removed"))
 	})
 
 	return app
@@ -165,8 +204,18 @@ func LoadFlowFromJson(fn string) (*Flow, error) {
 
 // Create Error message
 func NewError(msg string) fiber.Map {
+	return newMessage("error", msg)
+}
+
+// Create Success message
+func NewSuccess(msg string) fiber.Map {
+	return newMessage("success", msg)
+}
+
+// Create new message
+func newMessage(sts string, msg string) fiber.Map {
 	return fiber.Map{
-		"status":  "error",
+		"status":  sts,
 		"message": msg,
 	}
 }
@@ -183,4 +232,23 @@ func (s *FlowStorage) GetByID(id uint) *Message {
 	var msg *Message
 	s.db.First(&msg, id)
 	return msg
+}
+
+// CreateMessage - creates new message in DB
+func (s *FlowStorage) CreateMessage(m *Message) error {
+	return s.db.Create(m).Error
+}
+
+// UpdateMessage - updates message by ID in DB
+func (s *FlowStorage) UpdateMessage(m *Message) error {
+	return s.db.Model(m).Updates(Message{Body: m.Body, FlowID: m.FlowID, Options: m.Options}).Error
+}
+
+// DeleteMessage - updates message by ID in DB
+func (s *FlowStorage) DeleteMessage(id uint) error {
+	m := s.GetByID(id)
+	if m == nil {
+		return errors.New("message not found")
+	}
+	return s.db.Delete(m).Error
 }
